@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <img src="public/APP-ICON.svg" alt="Nircha" width="180" />
+</p>
 
-## Getting Started
+<h3 align="center">
+  Career Driven Search Engine
+</h3>
 
-First, run the development server:
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=react,typescript,golang,redis,docker" />
+</p>
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+<StackIcon name="reactnative" />
+
+# Nircha
+
+<p align="center">
+  <img src="public/home.png" alt="Home screen" width="400" style="margin-right: 10px;" />
+  <img src="public/description.png" alt="Search screen" width="400" />
+</p>
+
+## Architecture
+
+Four pieces: three are Go services sharing one Redis instance, the
+fourth the Next.js frontend that communicates with the API over HTTP:
+
+```mermaid
+graph LR
+    Crawler -->|writes pages + index| Redis[(Redis)]
+    Redis -->|reads| Searcher
+    Searcher -->|in-process call, no network hop| Ranker
+    Frontend[Next.js Frontend] -->|HTTP| Searcher
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Crawler** fetches pages, extracts both general content and
+  opportunity-specific fields (deadlines, field of study, degree level,
+  location, trust tier), and writes everything to Redis.
+- **Ranker** calculates the composite scoring formula 
+  (text relevance, field match, trust, freshness, deadline urgency, plus
+  a personalization signal for major) and the hard eligibility filter for 
+  degree level/location.
+- **Searcher** is the REST API: looks a query up against Redis, resolves
+  full listing data, applies the hard filter, calls into `ranker` directly
+  in-process for scoring, and returns JSON.
+- **Frontend** is the Next.js app that calls the searcher's API and lets a
+  person optionally save a profile (major, degree level, location) that
+  personalizes every search afterward.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Technology Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Backend:** Go, Redis (persistence, inverted index, hybrid RDB+AOF)   
+**Frontend:** Next.js (App Router), React, TypeScript  
+**Build:** Docker, Git
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+nircha/
+│
+├── search-engine/           # Go backend
+│   ├── crawler/             # module search-engine/crawler
+│   ├── ranker/              # module search-engine/ranker
+│   ├── searcher/            # module search-engine/searcher
+│   └── docker-compose.yml
+└── src/                     # Next.js frontend
+    ├── app/                 # pages (home, /search)
+    ├── components/          # feature-organized components + types
+    ├── hooks/               # useProfile (localStorage-backed)
+    ├── lib/                 # typed searcher API client
+    └── styles/              # CSS modules
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docker
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cd search-engine
+docker compose up --build
+```
 
-## Deploy on Vercel
+Starts Redis, runs the crawler once, and brings up the searcher on
+`:8080`. The crawler does one crawl pass and exits; it not a long-running 
+service; The searcher stays running for search to work.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Purpose
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Career and education search is one of the most least well-organized 
+research most people ever do if counseling guidance is not provided. 
+Nircha is a search engine built to for this problem: a dedicated index 
+of university programs, internships, and research opportunities, ranked 
+not just by text relevance but by trust, timeliness, and personalization. 
+A general search engine usually does not distinguish a real, time-sensitive 
+scholarship deadline from an unrelated blog post, but here that distinction 
+is the whole point.
+
+The goal isn't more results, it's the *right* results, surfaced at the
+moment someone can still act on them. Nircha is here to support the rising 
+college students and those who are becoming more career oriented, or anyone 
+else who needs just a nudge in the right direction in navigating opportunities 
+scattered across thousands of sites without a network to guide them.
+
+# License
+
+Copyright (c) 2026 Kiet Tran
+
+Nircha is licensed under the GNU General Public License v3.0 (GPLv3).
+
+See LICENSE.md for the project license.
