@@ -1,0 +1,125 @@
+.container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 50;
+}
+
+.tab,
+.tabActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(6px);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.tab:hover,
+.tabActive:hover {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.tabActive {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #16a34a;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 300px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+}
+
+.panelHint {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #6b7280;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.field input,
+.field select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  font-weight: 400;
+  color: #111827;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: rgba(0, 0, 0, 0.4);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.clearButton {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+
+.clearButton:hover {
+  color: #111827;
+  text-decoration: underline;
+}
+
+.saveButton {
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: none;
+  background: #111827;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  background: #000;
+}
