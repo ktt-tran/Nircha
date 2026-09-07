@@ -1,7 +1,8 @@
 import type { SearchResponse } from "@/src/components/search/search.types";
 import type { Profile } from "@/src/components/profile/profile.types";
 
-const SEARCH_API_URL = process.env.NEXT_PUBLIC_SEARCH_API_URL;
+
+const SEARCH_API_URL = process.env.NEXT_PUBLIC_SEARCH_API_URL
 
 export class SearchRequestError extends Error {
   constructor(
@@ -23,6 +24,7 @@ export async function searchOpportunities(
   profile: Profile,
   options: SearchOptions = {},
 ): Promise<SearchResponse> {
+
   const params = new URLSearchParams({ q: query });
   if (profile.major) params.set("major", profile.major);
   if (profile.degreeLevel) params.set("degree", profile.degreeLevel);

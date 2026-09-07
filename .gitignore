@@ -1,9 +1,9 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-/public/APP-ICON.svg:Zone.Identifier
-/public/ICON.svg:Zone.Identifier
-/search-engine/README.md
-/search-engine/searcher/README.md
+/search-engine/data/
+/search-engine/ranker/cmd/
+/search-engine/ranker/document/profile_test.go
+/search-engine/ranker/ranker/ranker_test.go
 
 # dependencies
 /node_modules

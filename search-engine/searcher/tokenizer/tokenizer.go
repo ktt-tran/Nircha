@@ -4,10 +4,8 @@ import "strings"
 
 // defaultLanguage is used for every query. Per-query language detection
 
-// Sanitize, RemoveStopWords, and StemWords all still take a language
-// parameter, so real multi-language support - e.g. accepting an explicit
-// `lang` query parameter from the API once more stopword/stemmer data is
-// bundled - can be layered back in without restructuring this pipeline.
+// Sanitize, RemoveStopWords, and StemWords supports multi languag by adding 
+// to stopwords directory.
 const defaultLanguage = "english"
 
 // Tokenize turns free-text search input into a normalized slice of terms:

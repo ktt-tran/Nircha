@@ -2,13 +2,13 @@ package models
 
 // SearchResponse is the JSON body returned by GET /api/search.
 type SearchResponse struct {
-	Query        string             `json:"query"`
-	Pages        []SearchResultPage `json:"pages"`
-	TotalResults int                `json:"totalResults"`
-	Page         int                `json:"page"`
-	PageSize     int                `json:"pageSize"`
-	PagesCount   int                `json:"pagesCount"`
-	TimeMs       int64              `json:"timeMs"`
+	Query        string             `json:"query"`         // the search terms that were echoed back
+	Pages        []SearchResultPage `json:"pages"`         // the ranked results for this one page, ready to render
+	TotalResults int                `json:"totalResults"`  // how many results matched in total, across all pages
+	Page         int                `json:"page"`          // which page this response is (1-indexed)
+	PageSize     int                `json:"pageSize"`      // results per page for this response
+	PagesCount   int                `json:"pagesCount"`    // total pages available: ceil(TotalResults / PageSize)
+	TimeMs       int64              `json:"timeMs"`        // how long the search took server-side, in milliseconds
 }
 
 // SuggestResponse is the JSON body returned by GET /api/suggest. Suggestions

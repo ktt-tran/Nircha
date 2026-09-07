@@ -14,7 +14,7 @@ RUN go build -o /out/searcher ./cmd
 FROM debian:bookworm-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
-&& rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --system --no-create-home --shell /usr/sbin/nologin searcher
 WORKDIR /app

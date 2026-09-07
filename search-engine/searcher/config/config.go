@@ -1,9 +1,3 @@
-// Package config centralizes environment-variable configuration for the
-// searcher service. Previously these were scattered os.Getenv calls in
-// individual files (redis-repository.go) mixed with hardcoded literals
-// (":8080" in server.go, fuzzy tolerance of 2 in main.go), which makes it
-// easy to lose track of what's actually configurable and where. Everything
-// tunable lives here, with a documented default for each.
 package config
 
 import (
@@ -56,7 +50,7 @@ type Config struct {
 
 // Load reads configuration from the process environment, applying a
 // documented default for anything unset. It does not call godotenv.Load()
-// itself - that's a process-bootstrapping side effect that belongs in
+// itself, that's a process-bootstrapping side effect that belongs in
 // main(), before Load() runs, so this function has one job: turn whatever
 // is already in the environment into a validated Config.
 func Load() (*Config, error) {

@@ -7,6 +7,7 @@ import { SearchResult } from "@/src/components/search/search.types";
 import { FaSearch } from "react-icons/fa";
 import { searchOpportunities, SearchRequestError } from "@/src/lib/searchEngine";
 import { useProfile } from "@/src/hooks/useProfile";
+import { SearchOptions } from "@/src/lib/searchEngine";
 
 function badgeLabel(result: SearchResult): string {
   return (
@@ -34,6 +35,11 @@ function SearchPageContent() {
   const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // limit filter to top {size} results per page search.
+  const topPages: SearchOptions = {
+    page: 1,
+    size: 10
+  };
 
   useEffect(() => {
     if (!profileLoaded) return;
@@ -50,7 +56,9 @@ function SearchPageContent() {
     setLoading(true);
     setError(null);
 
-    searchOpportunities(trimmed, profile)
+
+
+    searchOpportunities(trimmed, profile, topPages)
       .then((data) => {
         if (cancelled) return;
         setResults(data.pages);

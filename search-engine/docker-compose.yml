@@ -1,0 +1,65 @@
+version: "3.9"
+name: search-engine
+
+services:
+  redis:
+    image: redis:latest
+    command: redis-server --appendonly yes --appendfsync everysec
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data:/data
+    networks:
+      - search-engine-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  crawler:
+    build:
+      context: ./crawler
+      target: runner
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - search-engine-net
+    env_file:
+      - ./crawler/.env.docker
+    environment:
+      REDIS_CONNECTION_ADDRESS: redis:6379
+    dns:
+      - 8.8.8.8
+      - 4.4.4.4
+      - 192.168.9.45
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 512M
+    restart: "no"
+
+  searcher:
+    build:
+      context: .
+      dockerfile: searcher/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - search-engine-net
+    env_file:
+      - ./searcher/.env
+    environment:
+      REDIS_CONNECTION_ADDRESS: redis:6379
+    restart: unless-stopped
+
+networks:
+  search-engine-net:
+    driver: bridge
+
+

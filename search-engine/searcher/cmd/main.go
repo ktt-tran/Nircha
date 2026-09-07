@@ -2,131 +2,77 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"search-engine/searcher/models"
-	"search-engine/searcher/tokenizer"
+	"search-engine/searcher/config"
+	fuzzysearch "search-engine/searcher/fuzzy-search"
+	"search-engine/searcher/handlers"
+	"search-engine/searcher/repository"
+	"search-engine/searcher/server"
+	"search-engine/searcher/services"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/joho/godotenv"
 )
 
-type seedPage struct {
-	id            int64
-	title         string
-	abstract      string
-	url           string
-	organization  string
-	trustTier     int
-	postedDaysAgo int
-	deadlineDays  int // 0 means no deadline
-	fieldsOfStudy []string
-	degreeLevels  []string
-	location      string
-	remote        bool
-}
-
-var samplePages = []seedPage{
-	{
-		id: 1, title: "Summer Research Internship in Computer Science",
-		abstract: "A 10-week paid summer research internship for undergraduates in computer science.",
-		url:      "https://example.edu/op/1", organization: "Example University",
-		trustTier: 1, postedDaysAgo: 5, deadlineDays: 21,
-		fieldsOfStudy: []string{"computer science"}, degreeLevels: []string{"undergraduate"},
-		location: "Cambridge, MA",
-	},
-	{
-		id: 2, title: "Undergraduate Research Opportunity in Biology",
-		abstract: "Work in a molecular biology lab over the summer with faculty mentorship.",
-		url:      "https://example.edu/op/2", organization: "Example University",
-		trustTier: 1, postedDaysAgo: 60, deadlineDays: 0,
-		fieldsOfStudy: []string{"biology"}, degreeLevels: []string{"undergraduate", "graduate"},
-		location: "Cambridge, MA",
-	},
-	{
-		id: 3, title: "Software Engineering Internship",
-		abstract: "Join our engineering team for a 12-week software internship building production systems.",
-		url:      "https://example.com/careers/3", organization: "Example Corp",
-		trustTier: 2, postedDaysAgo: 2, deadlineDays: 45,
-		fieldsOfStudy: []string{"computer science", "software engineering"}, degreeLevels: []string{"undergraduate"},
-		remote: true,
-	},
-	{
-		id: 4, title: "Data Science Fellowship",
-		abstract: "A year-long fellowship applying data science methods to public policy research.",
-		url:      "https://example.org/fellowship/4", organization: "Example Policy Institute",
-		trustTier: 3, postedDaysAgo: 150, deadlineDays: 0,
-		fieldsOfStudy: []string{"data science", "public health"}, degreeLevels: []string{"phd"},
-		location: "New York, NY",
-	},
-}
-
 func main() {
-	ctx := context.Background()
-	addr := os.Getenv("REDIS_CONNECTION_ADDRESS")
-	if addr == "" {
-		addr = "localhost:6379"
-	}
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: os.Getenv("REDIS_PASSWORD"),
-	})
-	defer rdb.Close()
 
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatalf("seed: cannot reach Redis at %s: %v", addr, err)
+	_ = godotenv.Load()
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
 	}
 
-	wordFreq := map[string]int{}
-	now := time.Now()
+	repo := repository.NewRedisRepository()
 
-	for _, p := range samplePages {
-		idStr := fmt.Sprintf("%d", p.id)
+	startupCtx, cancelStartup := context.WithTimeout(context.Background(), cfg.StartupTimeout)
+	defer cancelStartup()
 
-		page := models.Page{
-			Title: p.title, Abstract: p.abstract, Url: p.url,
-			Organization:  p.organization,
-			TrustTier:     p.trustTier,
-			PostedAt:      now.Add(-time.Duration(p.postedDaysAgo) * 24 * time.Hour),
-			LastCrawledAt: now,
-			FieldsOfStudy: p.fieldsOfStudy,
-			DegreeLevels:  p.degreeLevels,
-			Location:      p.location,
-			Remote:        p.remote,
-		}
-		if p.deadlineDays > 0 {
-			deadline := now.Add(time.Duration(p.deadlineDays) * 24 * time.Hour)
-			page.DeadlineAt = &deadline
-		}
+	// Fail fast with a clear message if Redis isn't reachable, rather
+	// than surfacing as a confusing downstream error the first time a
+	// request comes in.
+	if err := repo.Ping(startupCtx); err != nil {
+		log.Fatalf("startup: cannot reach Redis at %s: %v", cfg.RedisAddress, err)
+	}
 
-		data, err := json.Marshal(page)
+	fuzzySearcher, err := fuzzysearch.NewFuzzySearcher(startupCtx, repo, cfg.FuzzyTolerance)
+	if err != nil {
+		log.Fatalf("startup: building fuzzy-search dictionary: %v", err)
+	}
+
+	searchService := services.NewSearchService(repo, fuzzySearcher)
+	handler := handlers.NewHandler(searchService, fuzzySearcher, repo, cfg)
+	srv := server.NewServer(handler, cfg)
+
+	serverErr := make(chan error, 1)
+	go func() {
+		log.Printf("server: listening on %s", srv.Addr())
+		serverErr <- srv.Start()
+	}()
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-serverErr:
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("server: %v", err)
 		}
-		if err := rdb.HSet(ctx, "pages", idStr, data).Err(); err != nil {
-			log.Fatal(err)
-		}
+	case sig := <-shutdown:
+		log.Printf("server: received %s, shutting down gracefully", sig)
 
-		tokens := tokenizer.Tokenize(p.title)
-		fmt.Printf("page %d %-55q -> %v\n", p.id, p.title, tokens)
-		for pos, tok := range tokens {
-			const score = 1 // placeholder term-weight; the real indexer decides this
-			value := fmt.Sprintf("%d:%d", score, pos)
-			if err := rdb.HSet(ctx, "w:"+tok, idStr, value).Err(); err != nil {
-				log.Fatal(err)
-			}
-			wordFreq[tok]++
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("server: graceful shutdown failed: %v", err)
+		}
+		if err := repo.Close(); err != nil {
+			log.Printf("server: closing redis connection: %v", err)
 		}
 	}
-
-	for word, count := range wordFreq {
-		if err := rdb.HSet(ctx, "words-freq", word, fmt.Sprintf("%d", count)).Err(); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	fmt.Printf("seed complete: %d pages, %d unique words\n", len(samplePages), len(wordFreq))
 }

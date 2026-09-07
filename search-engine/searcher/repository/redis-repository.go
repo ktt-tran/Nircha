@@ -1,6 +1,7 @@
+package repository
 
 import (
-"context"
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
